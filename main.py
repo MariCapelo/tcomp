@@ -1,3 +1,16 @@
+import pandas as pd 
+
+def AFND_to_AFD(M):
+    df = pd.DataFrame(index=M["alfabeto"], columns=M["Q"])
+    for items in M["transicoes"]:
+        if items[1] == "&":
+            for lines in M["transicoes"]:
+                if items[0] == lines[2]:
+                    df[items[0]+items[2]] = pd.NA
+    print(df)
+
+# ------------------------------------------------------------------------------------
+
 def GLUD_to_AF(G):
     M = {
         "Q": [],
@@ -35,10 +48,9 @@ def GLUD_to_AF(G):
                 if items[0] not in M["alfabeto"]:
                     M["alfabeto"].append(items[0])
                 M["isAFN"] = True
-    
+    M["Q"].append("Z")
     M["transicoes"] = transicoes
-    for keys, values in M.items():
-       print(f"{keys}: {values}")
+    return M
     
 # ------------------------------------------------------------------------------------
 
@@ -94,7 +106,13 @@ print("Você entrou a Gramática Linear a Direita:")
 print(gramatic)
 print("-"*40)
 print("Autômato Finito gerado:")
-GLUD_to_AF(gramatic)
-print("-"*40)
 
-    
+AF = GLUD_to_AF(gramatic)
+for keys, values in AF.items():
+       print(f"{keys}: {values}")
+       
+print("-"*40)
+print("Transformação do AF em AFD:")
+
+AFD = AFND_to_AFD(AF)
+print(AFD)
