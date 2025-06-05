@@ -1,2 +1,2 @@
-S -> aS | bA | ε
-A -> aS | ε
+S -> aS | bA | &
+A -> aS | &
