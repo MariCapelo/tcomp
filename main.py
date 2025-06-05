@@ -56,8 +56,40 @@ def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
         visitados.append(fila.popleft())
         # print(f"fila: {fila}")
         # print(f"visitados: {visitados}")
-        
-    print(df)          
+    
+    print("Tabela de transições)")
+    print(df)
+    print("\n")
+    df = df.dropna(axis=1, how="all")   
+    print("Retirando estados não atingidos)")
+    print(df)
+    
+    Q2 = []
+    transicoes2 = []
+    F2 = []
+    
+    for columns in df.columns:
+        Q2.append(columns)
+        for caractere in columns:
+            if caractere in F:
+                F2.append(columns)
+                break
+    
+    for state in Q2:
+        for caractere in alfabeto:
+            if pd.isna(df.loc[caractere, state]):
+                continue
+            else:
+                transicoes2.append([state, caractere, df.loc[caractere, state]])
+    M2 = {
+        "Q": Q2,
+        "alfabeto": alfabeto,
+        "transicoes": transicoes2,
+        "q0": q0[0],
+        "F": F2
+    }
+    
+    return M2
                
 # ------------------------------------------------------------------------------------
 
@@ -154,15 +186,22 @@ gramatic = ler_arquivo(file_path)
 print("-"*40)
 print("Você entrou a Gramática Linear a Direita:")
 print(gramatic)
-print("-"*40)
-print("Autômato Finito gerado:")
 
+print("-"*40)
+
+print("Autômato Finito gerado:")
 AF = GLUD_to_AF(gramatic)
 for keys, values in AF.items():
        print(f"{keys}: {values}")
        
 print("-"*40)
-print("Transformação do AF em AFD:")
 
+print("Transformação do AF em AFD:")
 AFD = AFND_to_AFD(AF["Q"], AF["alfabeto"], AF["transicoes"], AF["q0"], AF["F"])
-print(AFD)
+print("\nADF)")
+for keys, values in AFD.items():
+       print(f"{keys}: {values}")
+       
+print("-"*40)
+
+print("Aplicando o complemento e o reverso:")
