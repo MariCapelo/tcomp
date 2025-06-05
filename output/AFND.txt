@@ -1,0 +1,10 @@
+Q: S, A, Z
+alfabeto: a, b, &
+transicoes:
+S, a -> S
+S, b -> A
+S, & -> Z
+A, a -> S
+A, & -> Z
+q0: S
+F: Z

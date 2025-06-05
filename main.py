@@ -56,41 +56,54 @@ def cria_arquivo(nome, automato):
             
 # ------------------------------------------------------------------------------------
 
+# Faz a operação de complemento do automato
+# Transforma os estados finais em estados não finais e vice-versa
 def complemento(AFD):
+    # Recebe uma cópia dos estados do automato 
     novo_F = AFD["Q"].copy()
+    
+    # Retira os estados finais
     for state in AFD["F"]:
         novo_F.remove(state)
-        
+    
+    # Torna os estados não finais em finais 
     AFD["F"] = novo_F
     
     cria_arquivo("output/complemento_ADF.txt", AFD)
+    print("Arquivo do complemento criado!")
     
 # ------------------------------------------------------------------------------------
 
 def reverso(AFD):
     transicoes = AFD["transicoes"]
     aux: object
+    
+    # Reverte as transições do automato 
     for items in transicoes:
         aux = items[0]
         items[0] = items[2]
         items[2] = aux
     
+    # Se houver mais de um estado final, ao fazer o reverso haverá um conjunto de estados iniciais. Isso precisa ser tratado.
     if len(AFD["F"]) != 1:
         aux = AFD["q0"]
         AFD["q0"] = "INICIO"
         for state in AFD["F"]:
             transicoes.append(["INICIO", '&', state])
         AFD["F"] = [aux]
+    # Se não apenas inverta os dois
     else:
         aux = AFD["q0"]
         AFD["q0"] = AFD["F"]
         AFD["F"] = aux
     
     cria_arquivo("output/reverso_ADF.txt", AFD)
+    print("Arquivo do reverso criado!")
     
 # ------------------------------------------------------------------------------------
 
 def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
+    # Este bloco trata as transições vazia e adiciona estados gerados pro e-fechos
     for lines in transicoes:
         if lines[1] == "&":
             for items in transicoes:
@@ -100,14 +113,21 @@ def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
                         Q.append(lines[0] + lines[2])
             transicoes.remove(lines)
     
+    # Remove o a possibilidade do vazio na máquina 
     if "&" in alfabeto:
         alfabeto.remove("&")
     
+    # Cria um DataFrame para a visualização da transformação do AFND em AFD
     df = pd.DataFrame(index=alfabeto, columns=Q, dtype=object)
     visitados = []
     fila = deque()
     fila.append(q0)
+    
+    # - DFS para somente abrir estados que já foram acessados por outros 
+    # - A partir do estado inicial, adiciona as transições dos estados, adiciona estados compostos (resultantes do não-determinismo)
+    #   no Data Frame, e vai fazendo esse caminho até que a fila fique vazia e todos os estados tenham sido visitados.
     while fila:
+        # Tratamento para estado simples {A, B, C, S, Z}
         if len(fila[0]) == 1:
             for lines in transicoes:
                 if fila[0] == lines[0]:
@@ -122,6 +142,8 @@ def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
                     if df.loc[lines[1], fila[0]] not in fila:
                         if df.loc[lines[1], fila[0]] not in visitados:
                             fila.append(df.loc[lines[1], fila[0]])
+                            
+        # Tratamento para estados compostos {AB, SAZ, SC, BZ}
         else:
             for state in fila[0]:
                 for lines in transicoes:
@@ -144,10 +166,11 @@ def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
         visitados.append(fila.popleft())
         # print(f"fila: {fila}")
         # print(f"visitados: {visitados}")
-    
+    # Visualização da tabela de transições
     print("Tabela de transições)")
     print(df)
     print("\n")
+    # Retira colunas não abertas 
     df = df.dropna(axis=1, how="all")   
     print("Retirando estados não atingidos)")
     print(df)
@@ -155,20 +178,21 @@ def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
     Q2 = []
     transicoes2 = []
     F2 = []
-    
+    # Captura as informações do Data Frame
     for columns in df.columns:
         Q2.append(columns)
         for caractere in columns:
             if caractere in F:
                 F2.append(columns)
                 break
-    
+    # Captura as informações do Data Frame
     for state in Q2:
         for caractere in alfabeto:
             if pd.isna(df.loc[caractere, state]):
                 continue
             else:
                 transicoes2.append([state, caractere, df.loc[caractere, state]])
+    # Estrutura o DFA
     M2 = {
         "Q": Q2,
         "alfabeto": alfabeto,
@@ -195,29 +219,35 @@ def GLUD_to_AF(G):
     transicoes = []
     
     for lines in G.keys():
+        # Define o primeiro não-terminal encontrado como estado inicial
         if len(M["q0"]) == 0:
             M["q0"] = lines
-            
+        
+        # Adiciona o não-terminal ao conjunto de estados, se ainda não estiver
         if lines not in M["Q"]:
             M["Q"].append(lines)
-            
+        
+        # Percorre as produções associadas a esse não-terminal
         for items in G[lines]:
             if len(items) == 1:
+                # Caso seja um terminal (minúscula, dígito ou '&' para vazio)
                 if items.islower() or items == "&" or items.isdigit():
                     transicoes.append([lines, items, "Z"])
                     if items not in M["alfabeto"]:
                         M["alfabeto"].append(items) 
-                      
+                        
+                # Caso seja um não-terminal (letra maiúscula)      
                 elif items.isupper():
-                    M["isAFN"] = True
                     transicoes.append([lines, "&", items])
                     if items not in M["Q"]:
                         M["Q"].append(items)
-            
+            # Se a produção possui 2 símbolos (terminal seguido de não-terminal)
             elif len(items) == 2:
                 transicoes.append([lines, items[0], items[1]])
                 if items[0] not in M["alfabeto"]:
                     M["alfabeto"].append(items[0])
+                    
+    # Garante que o estado final 'Z' sempre estará presente no conjunto de estados
     M["Q"].append("Z")
     M["transicoes"] = transicoes
     
@@ -227,6 +257,7 @@ def GLUD_to_AF(G):
     
 # ------------------------------------------------------------------------------------
 
+# Ler o arquivo que contém a Gramática Linear Unitária a Direita
 def ler_arquivo(path):
     folder = "gramaticas/"
     folder += path
@@ -241,6 +272,7 @@ def ler_arquivo(path):
     catch = False
     string = ""
     tam = 0
+    # Loop para formatar a Gramática retirada do arquivo.txt em um dicionário
     for lines in gramatic:
         for item in lines:
             if tam == (len(lines) - 1):
@@ -301,13 +333,9 @@ print("Testando cadeias:")
 num_cadeias = input("Digite a quantidade de cadeias que quer testar: ")
 verifica_cadeia(int(num_cadeias),AFD["transicoes"], AFD["q0"], AFD["F"])
 
-print("Aplicando o complemento:")
+print("-"*40)
 complemento(AFD.copy())
+reverso(AFD.copy())
 
-print("-"*40)
+print ('- Verifique a pasta "output"')
 
-print("Aplicando o reverso:")
-automato = AFD.copy()
-reverso(automato)
-
-print("-"*40)
