@@ -1,14 +1,64 @@
 import pandas as pd 
+import numpy as np
+from collections import deque
 
-def AFND_to_AFD(M):
-    df = pd.DataFrame(index=M["alfabeto"], columns=M["Q"])
-    for items in M["transicoes"]:
-        if items[1] == "&":
-            for lines in M["transicoes"]:
-                if items[0] == lines[2]:
-                    df[items[0]+items[2]] = pd.NA
-    print(df)
-
+def AFND_to_AFD(Q, alfabeto, transicoes, q0, F):
+    for lines in transicoes:
+        if lines[1] == "&":
+            for items in transicoes:
+                if items[2] == lines[0]:
+                    items[2] = lines[0] + lines[2]
+                    if lines[0] + lines[2] not in Q:
+                        Q.append(lines[0] + lines[2])
+            transicoes.remove(lines)
+    
+    if "&" in alfabeto:
+        alfabeto.remove("&")
+    
+    df = pd.DataFrame(index=alfabeto, columns=Q)
+    visitados = []
+    fila = deque()
+    fila.append(q0[0])
+    while fila:
+        if len(fila[0]) == 1:
+            for lines in transicoes:
+                if fila[0] == lines[0]:
+                    if pd.isna(df.loc[lines[1], fila[0]]):
+                        df.loc[lines[1], fila[0]] = lines[2]
+                    else:
+                        df.loc[lines[1], fila[0]] += lines[2]
+                        if df.loc[lines[1], fila[0]] not in Q:
+                            Q.append(df.loc[lines[1], fila[0]])
+                            df[df.loc[lines[1], fila[0]]] = np.nan
+                        
+                    if df.loc[lines[1], fila[0]] not in fila:
+                        if df.loc[lines[1], fila[0]] not in visitados:
+                            fila.append(df.loc[lines[1], fila[0]])
+        else:
+            for state in fila[0]:
+                for lines in transicoes:
+                    if state == lines[0]:
+                        if pd.isna(df.loc[lines[1], fila[0]]):
+                            df.loc[lines[1], fila[0]] = lines[2]
+                            if df.loc[lines[1], fila[0]] not in Q:
+                                Q.append(df.loc[lines[1], fila[0]])
+                                df[df.loc[lines[1], fila[0]]] = np.nan
+                        else:
+                            df.loc[lines[1], fila[0]] += lines[2]
+                            if df.loc[lines[1], fila[0]] not in Q:
+                                Q.append(df.loc[lines[1], fila[0]])
+                                df[df.loc[lines[1], fila[0]]] = np.nan
+                                
+                        if df.loc[lines[1], fila[0]] not in fila:
+                            if df.loc[lines[1], fila[0]] not in visitados:
+                                fila.append(df.loc[lines[1], fila[0]])
+        
+        visitados.append(fila.popleft())
+        # print(f"fila: {fila}")
+        # print(f"visitados: {visitados}")
+        
+    print(df)          
+               
 # ------------------------------------------------------------------------------------
 
 def GLUD_to_AF(G):
@@ -114,5 +164,5 @@ for keys, values in AF.items():
 print("-"*40)
 print("Transformação do AF em AFD:")
 
-AFD = AFND_to_AFD(AF)
+AFD = AFND_to_AFD(AF["Q"], AF["alfabeto"], AF["transicoes"], AF["q0"], AF["F"])
 print(AFD)
